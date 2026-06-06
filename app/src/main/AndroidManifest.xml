@@ -7,13 +7,14 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="TzeLauncher"
-        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:label="MyLauncher"
+        android:theme="@android:style/Theme.Material.NoActionBar"
         android:allowBackup="false">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
