@@ -35,11 +35,11 @@ fun LauncherUI(activity: MainActivity) {
         }
     }
 
-    val resourceDirPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
+    val worldFilePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            statusMessage = ResourceImporter.importDirectory(activity, it)
+            statusMessage = ResourceImporter.importWorldOrTemplate(activity, it)
         }
     }
 
@@ -96,7 +96,7 @@ fun LauncherUI(activity: MainActivity) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { resourceDirPicker.launch(null) },
+                    onClick = { worldFilePicker.launch("*/*") },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = minecraftInstalled
                 ) {
