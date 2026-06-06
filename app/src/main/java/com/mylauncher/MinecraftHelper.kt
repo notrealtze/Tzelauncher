@@ -107,10 +107,11 @@ object ResourceImporter {
         destDir.mkdirs()
         val files = sourceDir.listFiles()
         for (file in files) {
+            val fileName = file.name ?: continue
             if (file.isDirectory) {
-                copyDocumentDirectory(context, file, File(destDir, file.name!!))
+                copyDocumentDirectory(context, file, File(destDir, fileName))
             } else {
-                val targetFile = File(destDir, file.name!!)
+                val targetFile = File(destDir, fileName)
                 context.contentResolver.openInputStream(file.uri)?.use { input ->
                     FileOutputStream(targetFile).use { output ->
                         input.copyTo(output)
