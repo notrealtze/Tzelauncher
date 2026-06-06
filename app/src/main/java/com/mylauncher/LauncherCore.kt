@@ -1,67 +1,63 @@
 package com.mylauncher
 
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import dalvik.system.DexClassLoader
+import android.net.Uri
 import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.ZipInputStream
 
-object LauncherCore {
+object PackInstaller {
 
-    fun launch(context: Context, apkPath: String): String {
+    private const val MINECRAFT_BASE_PATH = "Android/data/com.mojang.minecraftpe/files/games/com.mojang"
+
+    fun importFile(context: Context, fileUri: Uri, fileName: String): String {
         return try {
-            val apkFile = File(apkPath)
-            if (!apkFile.exists()) return "APK file not found at: $apkPath"
-
-            val optimizedDir = context.getDir("dex_output", Context.MODE_PRIVATE)
-            val nativeLibDir = context.getDir("native_libs", Context.MODE_PRIVATE)
-
-            // Extract native libs from APK
-            extractNativeLibs(apkPath, nativeLibDir.absolutePath)
-
-            val classLoader = DexClassLoader(
-                apkFile.absolutePath,
-                optimizedDir.absolutePath,
-                nativeLibDir.absolutePath,
-                context.classLoader
-            )
-
-            val minecraftClass = classLoader
-                .loadClass("com.mojang.minecraftpe.MainActivity")
-
-            val intent = Intent(context, minecraftClass).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val targetFolder = when {
+                fileName.endsWith(".mcpack", ignoreCase = true) -> "resource_packs"
+                fileName.endsWith(".mcworld", ignoreCase = true) -> "minecraftWorlds"
+                fileName.endsWith(".mcaddon", ignoreCase = true) -> "resource_packs"
+                else -> return "Unsupported file format. Please choose an mcpack, mcworld, or mcaddon."
             }
-            context.startActivity(intent)
-            "Launching Minecraft..."
 
-        } catch (e: Exception) {
-            "Error: ${e.message}"
-        }
-    }
+            val storageDir = File(android.os.Environment.getExternalStorageDirectory(), MINECRAFT_BASE_PATH)
+            val destinationDir = File(storageDir, targetFolder)
 
-    private fun extractNativeLibs(apkPath: String, outDir: String) {
-        try {
-            val zip = java.util.zip.ZipFile(apkPath)
-            val entries = zip.entries()
-            while (entries.hasMoreElements()) {
-                val entry = entries.nextElement()
-                if (entry.name.contains("lib/arm64-v8a") && 
-                    entry.name.endsWith(".so")) {
-                    val outFile = File(outDir, File(entry.name).name)
-                    if (!outFile.exists()) {
-                        zip.getInputStream(entry).use { input ->
-                            outFile.outputStream().use { output ->
-                                input.copyTo(output)
+            if (!destinationDir.exists()) {
+                destinationDir.mkdirs()
+            }
+
+            val packName = fileName.substringBeforeLast(".")
+            val outputExtractionDir = File(destinationDir, packName)
+            if (!outputExtractionDir.exists()) {
+                outputExtractionDir.mkdirs()
+            }
+
+            context.contentResolver.openInputStream(fileUri).use { inputStream ->
+                if (inputStream == null) return "Failed to read the selected file."
+                
+                ZipInputStream(inputStream).use { zipStream ->
+                    var entry = zipStream.nextEntry
+                    while (entry != null) {
+                        val outFile = File(outputExtractionDir, entry.name)
+                        
+                        if (entry.isDirectory) {
+                            outFile.mkdirs()
+                        } else {
+                            outFile.parentFile?.mkdirs()
+                            FileOutputStream(outFile).use { outputStream ->
+                                zipStream.copyTo(outputStream)
                             }
                         }
+                        zipStream.closeEntry()
+                        entry = zipStream.nextEntry
                     }
                 }
             }
-            zip.close()
+
+            "Successfully imported $packName into $targetFolder instantly!"
+
         } catch (e: Exception) {
-            e.printStackTrace()
+            "Import failed: ${e.message}"
         }
     }
 }
