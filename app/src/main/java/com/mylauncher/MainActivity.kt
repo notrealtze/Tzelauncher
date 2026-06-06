@@ -1,6 +1,6 @@
 package com.mylauncher
 
-import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -28,20 +28,42 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LauncherUI(activity: MainActivity) {
-    var mcApkPath by remember { mutableStateOf("No APK selected") }
     var statusMessage by remember { mutableStateOf("") }
+    var minecraftInstalled by remember { mutableStateOf(MinecraftHelper.isMinecraftInstalled(activity)) }
 
     val apkPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { safeUri ->
-            val cachedPath = copyUriToCache(activity, safeUri)
-            if (cachedPath != null) {
-                mcApkPath = cachedPath
-                statusMessage = "APK imported into cache successfully. Ready to launch."
-            } else {
-                statusMessage = "Error: Failed to process or cache the selected APK file."
+        uri?.let {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(it, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                activity.startActivity(intent)
+                statusMessage = "Installation started. Please complete it."
+            } catch (e: Exception) {
+                statusMessage = "Error: ${e.message}"
             }
+        }
+    }
+
+    val resourceFilePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val result = ResourceImporter.importFile(activity, it)
+            statusMessage = result
+        }
+    }
+
+    val resourceDirPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            val result = ResourceImporter.importDirectory(activity, it)
+            statusMessage = result
         }
     }
 
@@ -58,54 +80,38 @@ fun LauncherUI(activity: MainActivity) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "MyLauncher",
-                    fontSize = 32.sp,
+                    text = "Minecraft Bedrock Launcher",
+                    fontSize = 28.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Minecraft Bedrock Launcher",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Selected APK File Path:", fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = mcApkPath,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = { apkPicker.launch("application/vnd.android.package-archive") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Import Minecraft APK")
+                    Text("Install Minecraft APK")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { resourceFilePicker.launch("*/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = minecraftInstalled
+                ) {
+                    Text("Load Resource Pack / Addon")
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = {
-                        statusMessage = LauncherCore.launch(activity, mcApkPath)
-                    },
+                    onClick = { resourceDirPicker.launch(null) },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = mcApkPath != "No APK selected"
+                    enabled = minecraftInstalled
                 ) {
-                    Text("Launch Minecraft")
+                    Text("Load World / Template")
                 }
 
                 if (statusMessage.isNotEmpty()) {
@@ -118,27 +124,5 @@ fun LauncherUI(activity: MainActivity) {
                 }
             }
         }
-    }
-}
-
-fun copyUriToCache(context: Context, uri: Uri): String? {
-    return try {
-        val cacheDir = context.cacheDir
-        val outputFile = File(cacheDir, "imported_target_game.apk")
-        
-        if (outputFile.exists()) {
-            outputFile.delete()
-        }
-
-        context.contentResolver.openInputStream(uri).use { inputStream ->
-            if (inputStream == null) return null
-            FileOutputStream(outputFile).use { outputStream ->
-                inputStream.copyTo(outputStream)
-            }
-        }
-        outputFile.absolutePath
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
     }
 }
