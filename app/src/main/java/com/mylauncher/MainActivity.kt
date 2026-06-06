@@ -14,8 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.io.File
-import java.io.FileOutputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +40,7 @@ fun LauncherUI(activity: MainActivity) {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 activity.startActivity(intent)
-                statusMessage = "Installation started. Please complete it."
+                statusMessage = "Installation started. Complete it to launch."
             } catch (e: Exception) {
                 statusMessage = "Error: ${e.message}"
             }
@@ -53,8 +51,7 @@ fun LauncherUI(activity: MainActivity) {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val result = ResourceImporter.importFile(activity, it)
-            statusMessage = result
+            statusMessage = ResourceImporter.importFile(activity, it)
         }
     }
 
@@ -62,8 +59,7 @@ fun LauncherUI(activity: MainActivity) {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         uri?.let {
-            val result = ResourceImporter.importDirectory(activity, it)
-            statusMessage = result
+            statusMessage = ResourceImporter.importDirectory(activity, it)
         }
     }
 
@@ -92,6 +88,19 @@ fun LauncherUI(activity: MainActivity) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Install Minecraft APK")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        statusMessage = LauncherCore.launch(activity)
+                        minecraftInstalled = MinecraftHelper.isMinecraftInstalled(activity)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = minecraftInstalled
+                ) {
+                    Text("Launch Minecraft")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
