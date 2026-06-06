@@ -1,7 +1,5 @@
 package com.mylauncher
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,27 +27,9 @@ fun LauncherUI(activity: MainActivity) {
     var statusMessage by remember { mutableStateOf("") }
     var minecraftInstalled by remember { mutableStateOf(MinecraftHelper.isMinecraftInstalled(activity)) }
 
-    val apkPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(it, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                activity.startActivity(intent)
-                statusMessage = "Installation started. Complete it to launch."
-            } catch (e: Exception) {
-                statusMessage = "Error: ${e.message}"
-            }
-        }
-    }
-
     val resourceFilePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
             statusMessage = ResourceImporter.importFile(activity, it)
         }
@@ -57,7 +37,7 @@ fun LauncherUI(activity: MainActivity) {
 
     val resourceDirPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
+    ) { uri ->
         uri?.let {
             statusMessage = ResourceImporter.importDirectory(activity, it)
         }
@@ -83,14 +63,14 @@ fun LauncherUI(activity: MainActivity) {
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                Button(
-                    onClick = { apkPicker.launch("application/vnd.android.package-archive") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Install Minecraft APK")
+                if (!minecraftInstalled) {
+                    Text(
+                        text = "Minecraft is not installed.\nPlease install it first.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {
